@@ -1,85 +1,76 @@
-[b][size=6][color=Red]前言：内网后渗透第一篇，DMZ区域，总篇：https://www.t00ls.net/thread-50298-1-1.html[/color][/size][/b]
-[b][color=Blue][size=6]1.DMZ区域[/size][/color][/b]
-
-当我们拿到首个权限的时候，我们一般都在DMZ区域，什么是DMZ区域呢？
-
-DMZ是英文“demilitarized zone”的缩写，中文名称为“隔离区”，也称“非军事化区”。它是为了解决安装防火墙后外部网络的访问用户不能访问内部网络服务器的问题，而设立的一个非安全系统与安全系统之间的缓冲区。DMZ介于外网和内网之间，一般同时拥有一个或者多个内网IP和外网IP。    
-
-[attachimg]100469[/attachimg]
-
-[b][color=Blue][size=6]2.HOW TO DO?[/size][/color][/b]
-
-DMZ作为内网的"入口",普遍部署的防御设备比内网其他区域要多。同时DMZ作为我们窥探内网的窗口，我们内网漫游的开始，我们该怎么做呢？
-
-[b]2.1查看当前有没有管理员在线[/b]
-
-往往这个步骤会被大家所遗忘,但是这是非常有必要的。
-
-linux命令w，Windows命令 query user
-
-[attachimg]100470[/attachimg]
-
-尽量不要跟管理员同时操作，尽管webshell或者远程执行命令的动静不怎么大，但是因为各种情况都可能发生，为了不让自己好不容易搞下来的权限丢了，需要谨慎再谨慎。当然一些特殊情况，无法避免的时候该干还是干！！！
-
-[b]2.2探测防御设备
-[/b]
-通过tasklist/ps/netstat等命令查看进程，端口，或者通过查看一些目录名来判断已控的设备开启了哪些杀毒软件和可能有的防御设备（HIDS，流控，日志等），再根据设备进行指定绕过。
-
-[b]2.3信息收集[/b]
-
-信息收集不管在内网和外网都是一项必备的技能，如何更好地进行信息收集呢？
-
-[b][color=Red]Windows：[/color][/b]
-
-1.[url=https://www.t00ls.net/thread-55269-1-1.html]各类密码[/url]（点击可跳至文章）
-
-2.当前与被控主机所连接的服务器,ARP缓存，ip信息，路由信息目前服务器所在位置（tracert）
-
-3.日志，历史登陆记录等
-
-4.当前服务器所特有的信息，如是web服务器是否连接数据库，数据库连接串是啥？或者POP3服务器，邮件存哪了,能否直接被读取？
+​前言：在内网后渗透的过程中，怎么才能活过更长久？怎么样才能持续控制？当然是低调，低调到到管理员无感。不仅仅要让管理员没有察觉，甚至要做到让防御设备也无法察觉。（说到机器无感想起一个笑话，某厂商说自己的防御设备每台都会机器学习）
 
 
 
-[b][color=Red]linux:[/color][/b]
+1.日志对抗
 
-Linux不同于Windows，Linux的信息收集就简单多了，网上也有很多脚本，这边根据环境直接来用就行了。
+日志对抗有的时候比较难，因为现在日志都统一管理，实时上传。虽然也有方法绕过，但是比较繁琐。本文只写单机的日志对抗。
+1.1Windows日志
 
-sh:
-
-https://github.com/rebootuser/LinEnum.git
-
-https://github.com/pentestmonkey/unix-privesc-check.git
-
-python:
-
-http://www.securitysift.com/download/linuxprivchecker.py
-
-Perl:
-
-https://github.com/PenturaLabs/Linux_Exploit_Suggester.git
+简单说一下Windows的日志，windows的日志一般存在事件查看器中。一般Windows日志的对抗有两种姿势。
+一种是删除（单条/全部）
+一种是停用
+因为3Gstudent大佬已经把原理和实现都写得很清楚了（大概可能很清楚吧），这里就不重复造轮子了。
+地址：3gstudent.github.io/3gstudent.github.io/
 
 
+1.2linux日志
 
-[b]2.4后门留存[/b]
-
-为了不把鸡蛋放在一个篮子里面，当我们拿到一个权限的时候可以多加几个后门，如：
-
-1.把webshell写进源码，然后拼接（记得更改文件时间）
-
-2.在图片里插马，然后在源码里写包含
-
-3.LinuxHOOK命令，Windows ATT&CK的后门姿势集
+linux的日志文件一般存在/var/log目录下，要想删除linux日志，就得知道LINUX日志都存在哪几个文件。
+1.有关当前登录用户的信息    utmp    命令who   
+2.登录进入和退出记录          wtmp    命令w
+3.登录记录                           lastlog  命令last/lastlog
+4.安全体制                           secure
+5.messages                         syslog
 
 
-[b]
-2.5痕迹清除[/b]
+其实还有挺多系统日志的，我应该也没收集全
+linux要如何删除日志呢？其他的就不演示了，大概原理都是写个脚本把文件中关于自己IP的行全部删除就行了，工具也很多。这里讲一下utmp和wtmp，因为这两个是以二进制文件存储的。
+工具：logtamper
+地址：https://github.com/re4lity/logtamper/blob/master/logtamper.py
+躲避管理员w查看
+python logtamper.py -m 1 -u re4lity -i ip
+清除指定ip的登录日志
+python logtamper.py -m 2 -u re4lity -i ip
+修改上次登录时间地点
+python logtamper.py -m 3 -u re4lity -i ip -t tty1 -d time
 
-Linux 的history，last,lastlog，w
 
-https://github.com/re4lity/logtamper（删除脚本）
+2.其他痕迹
 
-Windows的安全日志（单条），最近文件等信息
+2.1windows其他痕迹
 
-https://3gstudent.github.io/3gstudent.github.io/渗透技巧-Windows日志的删除与绕过/
-TCV=0.1
+Windows其他痕迹主要来源于windows资源管理器。
+最近访问位置：
+
+
+
+最近搜索记录
+
+
+最近通过资源管理器的SMB共享和运行的搜索记录
+
+
+
+3389最近登录记录
+
+
+其实还有好多，就不一一列举了，这也是为啥老师傅们说尽可能不要登录上桌面入侵的原因。
+
+
+
+2.2LINUX其他
+
+linux除了日子一般都是历史操作日志了也就是history，有当前用户的history，mysql的history，各类的history。可以命令删，也可以手动去删。
+
+unset  HISTORY HISTFILE HISTSAVE HISTZONE HISTORY HISTLOG;
+export  HISTFILE=/dev/null;
+export  HISTSIZE=0;
+export  HISTFILESIZE=0;
+
+
+
+
+写在最后：
+
+失业ing，有没有老板看上的.....
